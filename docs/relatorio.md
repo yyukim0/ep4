@@ -43,14 +43,6 @@ A escolha de ações durante o treinamento gerencia ativamente o dilema entre ex
 * **Ações ($A$):** Espaço discreto contendo 5 ações possíveis: `0` (Inércia), `1` (Acelerar $\Delta v = +0.5$), `2` (Frear $\Delta v = -0.5$), `3` (Virar Esquerda $\Delta \theta = -30^\circ$), e `4` (Virar Direita $\Delta \theta = +30^\circ$).
 * **Recompensas ($R$):** Fornecida nativamente pelo ambiente através de *Reward Shaping* cumulativo: uma penalidade temporal fixa por passo (`R_TEMPO = -0.1`), um bônus proporcional ao avanço inédito no grid computado via BFS a partir da largada (`delta_progresso`), uma punição severa por colisão com a parede (`R_COLISAO = -100.0`) e um bônus massivo por atingir o objetivo final (`R_CHEGADA = +500.0`).
 
-### Estrutura da Tabela Q e Discretização
-A tabela Q foi modelada como um dicionário nativo do Python (`dict`), mapeando chaves discretas para vetores de floats do NumPy (`np.ndarray` de tamanho 5). 
-A função de discretização recebe os 6 floats contínuos e aplica a transformação uniforme:
-
-$$\text{Balde} = \min(\lfloor \text{obs} \times K \rfloor, K - 1)$$
-
-Para o baseline adotado de $K=5$, cada float é mapeado em um número inteiro de `0` a `4`. O estado final convertido assume o formato estrito de uma `Tuple[int, int, int, int, int, int]`.
-
 ### Esquema de Treinamento Round-Robin
 O loop principal em `treinar_round_robin` utiliza uma amostragem round-robin estocástica. A cada episódio, uma das 16 pistas de treino é selecionada aleatoriamente via `random.choice`. 
 * **Mitigação do Esquecimento Catastrófico:** Se o agente treinasse sequencialmente na pista 01, depois na 02, até a 16, os novos ajustes de pesos de Bellman sobrescreveriam os aprendizados anteriores, destruindo a política das primeiras pistas. Alternar as pistas a cada episódio força o algoritmo tabular a generalizar características geométricas locais que funcionam universalmente em qualquer circuito (ex: "se o sensor esquerdo ler parede próxima, curve para a direita").
