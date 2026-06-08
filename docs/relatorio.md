@@ -64,19 +64,12 @@ Os arquivos de saída `q_learning_pista_17.txt` e `q_learning_pista_18.txt` fora
 | Métrica | Pista 17 (Holdout) | Pista 18 (Holdout) | Média do Conjunto de Treino |
 | :--- | :--- | :--- | :--- |
 | **Sucesso** | SIM | NÃO | ~85% a 95% |
-| **Passos (Tempo)** | XXX passos | 500 passos (Truncado) | ~120 passos |
-| **Velocidade Média** | XXX células/passo | XXX células/passo | ~1.4 células/passo |
-| **Recompensa Total** | XXX | XXX | (Alta/Positiva) |
+| **Tempo de Chegada** | 108 passos | 500 passos (Truncado) | ~120 passos |
+| **Velocidade no Fim** | 0.50 células/passo | 0.00 células/passo | ~1.4 células/passo |
+| **Recompensa Total** | +629.20 | +12.00 | (Alta/Positiva) |
 
 ### Comparação e Queda de Desempenho
 A comparação direta demonstra uma clara queda de desempenho ao mover o agente do ambiente controlado de treinamento para o ambiente de testes (*holdout*). Enquanto nas 16 pistas de treino a taxa de sucesso converge para patamares elevados, na pista 18 o sucesso cai para **0%**. O tempo de chegada na pista 18 atinge o limite máximo estrito de `500 passos` (truncamento), caracterizando uma perda severa de eficiência e eficácia vacilante diante de cenários não mapeados previamente.
 
 ### Análise Crítica de Generalização
 Essa discrepância drástica de desempenho entre a pista 17 e a pista 18 expõe as limitações teóricas do **Aprendizado por Reforço Tabular** e os efeitos colaterais da **representação de estado**:
-
-1. **A Força do LIDAR Local:** O uso de sensores de distância relativos ao eixo do carro (LIDAR) em vez de coordenadas globais $(x, y)$ foi o que permitiu o sucesso na pista 17. O agente não decorou o mapa; ele aprendeu regras abstratas de sobrevivência local (ex: "se a frente está bloqueada, mude a direção").
-2. **O Gargalo da Discretização Rígida (Aliasing de Estados):** A falha na pista 18 ocorre devido ao fenômeno de *aliasing*. Ao agrupar os sensores contínuos em apenas $K=5$ baldes, o espaço se torna excessivamente granulado. Curvas fechadas complexas ou sequências de "S" inéditas geram floats que, ao serem truncados como inteiros, caem exatamente na mesma chave discreta de uma reta ou curva leve vista no treino. Como a tabela Q associa apenas uma única ação ótima para cada chave, o agente toma uma decisão catastrófica (como acelerar em uma parede) porque aquela chave específica estava associada a uma reta em outra pista.
-3. **Conclusão:** O Q-Learning Tabular carece de capacidade de aproximação suave. Ele trata o estado `(1, 2, 2, 2, 2, 3)` de forma totalmente isolada do estado `(1, 2, 2, 2, 2, 4)`. Para resolver o problema da pista 18 sem mudar o algoritmo para Deep RL (como DQN), seria necessário expandir o hiperparâmetro $K$ para valores maiores (tornando a discretização mais fina) ou criar uma função de recompensa ainda mais punitiva para oscilações bruscas de direção.
-
-### Inspeção Qualitativa via Animação
-A execução do comando de visualização no terminal confirma visualmente a análise abstrata. Na **Pista 17**, observa-se o rastro azul (`🟦`) desenhando uma trajetória limpa e centralizada no asfalto até atingir o emoji da bandeira de chegada (`🏁`). Já na **Pista 18**, o carrinho demonstra hesitação em trechos de curvas agudas consecutivas, entrando em loops de colisão repetida ou reduzindo a velocidade a zero de forma oscilatória, validando empiricamente que o espaço tabular faliu em discriminar a sutileza geométrica daquele trecho do circuito.  
