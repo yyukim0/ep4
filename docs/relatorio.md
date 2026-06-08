@@ -34,9 +34,6 @@ A escolha de ações durante o treinamento gerencia ativamente o dilema entre ex
 3. **Explotação Gulosa ($r \geq \epsilon$):** Caso contrário, o agente adota uma postura puramente gananciosa com base no conhecimento acumulado. Ele consulta a tabela Q indexada pela tupla discreta do estado atual e executa a ação que possui o maior valor esperado por meio de `np.argmax(self.Q[chave])`.
 4. **Quebra de Empates:** Se múltiplas ações possuírem exatamente o mesmo valor Q em um estado inédito (como `0.0` no início do treino), o empate é desfeito de forma estritamente determinística, priorizando o primeiro índice retornado pelo NumPy (ação `0` = Inércia).
 
-### Extensão Criativa (Diferencial da Solução)
-Para evitar o crescimento descontrolado e artificial da tabela Q na memória, foi implementada uma alocação de estados **sob demanda (Lazy Initialization)**. Em vez de instanciar estaticamente uma matriz gigante do NumPy contendo milhares de estados inúteis que o carro nunca visitaria (como sensores zerados em alta velocidade), a estrutura de dados expande dinamicamente. Um estado só passa a existir no dicionário Python no exato momento em que o veículo o experimenta pela primeira vez física na simulação, preenchendo o vetor de ações com zeros (`np.zeros(5)`), garantindo alta eficiência de memória de software.
-
 ---
 
 ## 5.3.3 Implementação
