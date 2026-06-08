@@ -5,6 +5,12 @@
 git clone (link do repositório)
 ```
 
+```bash
+# Para instalar as dependências no terminal
+pip install -r requirements.txt
+```
+
+
 Antes de começar a implementar, rode:
 
 ```bash
