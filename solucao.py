@@ -1,6 +1,21 @@
 """
-Solução do EP do carrinho (versão tabular) — Blindada contra Erros.
-Implementação limpa e em conformidade estrita com todos os critérios do enunciado.
+Esqueleto da sua solução para o EP do carrinho (versão tabular).
+
+Você deve implementar:
+    - AgenteQLearning  (tabular)
+
+E preencher main() para orquestrar:
+    1. Treinamento round-robin nas pistas 01-16 → salva treinamento/qlearning.pkl.
+    2. Avaliação gulosa (ε = 0) nas pistas de holdout 17 e 18 → gera
+       q_learning_pista_17.txt e q_learning_pista_18.txt (formato do README §4.3).
+
+Uso:
+    python solucao.py                         # treina (se necessário) + avalia em 17 e 18
+    python solucao.py --recarregar            # força re-treino (ignora pickle existente)
+    python solucao.py --avaliar pistas/X.txt  # apenas avalia o modelo salvo em X
+
+Termos como `step`, `reset`, `obs`, `action`, `reward` são mantidos em inglês
+por serem o vocabulário canônico de Aprendizado por Reforço (Sutton & Barto).
 """
 
 import sys
@@ -15,6 +30,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from env import AmbienteCarro  # noqa: E402
+# from visualize import renderizar_episodio  # use isto para animar seu agente no terminal
+
 
 # === Configuração ===
 SEED = 42
@@ -50,7 +67,6 @@ class AgenteQLearning:
         self.eps = eps_inicial
         self.eps_final = eps_final
         
-        # Tabela Q: mapeia tupla discreta de tamanho 6 -> np.array de tamanho 5 (ações)
         self.Q = {}
 
     def discretizar(self, obs):
@@ -61,14 +77,12 @@ class AgenteQLearning:
         """Política ε-greedy estrita."""
         chave = self.discretizar(obs)
         
-        # Inicializa o estado com zeros caso nunca tenha sido visitado
         if chave not in self.Q:
             self.Q[chave] = np.zeros(self.n_actions, dtype=np.float32)
             
         if treinar and random.random() < self.eps:
             return random.randint(0, self.n_actions - 1)
         else:
-            # Seleção gulosa pura. Quebra de empates determinística (primeiro índice)
             return int(np.argmax(self.Q[chave]))
 
     def atualizar(self, s, a, r, s_prox, terminou):
@@ -81,13 +95,11 @@ class AgenteQLearning:
         if chave_sp not in self.Q:
             self.Q[chave_sp] = np.zeros(self.n_actions, dtype=np.float32)
             
-        # Se terminou por colisão ou chegada, o valor futuro é zero (sem bootstrap)
         if terminou:
             alvo = r
         else:
             alvo = r + self.gamma * np.max(self.Q[chave_sp])
             
-        # Equação de Bellman
         self.Q[chave_s][a] += self.alpha * (alvo - self.Q[chave_s][a])
 
     @classmethod
@@ -117,18 +129,17 @@ def treinar_round_robin(pistas_treino, agente, n_episodios_por_pista,
     n_total = n_episodios_por_pista * len(pistas_treino)
     eps_inicial = agente.eps
 
-    # Cache de ambientes para evitar recalcular a BFS da pista a cada iteração
+    # Cache de ambientes — recriar AmbienteCarro a cada episódio é caro porque
+    # o BFS do campo de progresso é recalculado. Mantenha um dict pista→env.
     envs = {p: AmbienteCarro(p, max_steps=max_passos, seed=SEED) for p in pistas_treino}
 
     for ep in range(n_total):
-        # Schedule Linear do Epsilon conforme especificado
         if ep < decaimento_eps_episodios:
             frac = ep / decaimento_eps_episodios
             agente.eps = eps_inicial - frac * (eps_inicial - agente.eps_final)
         else:
             agente.eps = agente.eps_final
 
-        # Seleção Round-Robin Estocástica
         pista = random.choice(pistas_treino)
         env = envs[pista]
 
@@ -151,7 +162,6 @@ def treinar_round_robin(pistas_treino, agente, n_episodios_por_pista,
                 
             done = term or trunc
 
-        # Salvamento de históricos
         historico_recompensas.append(reward_acumulado)
         historico_sucessos.append(1 if sucesso_flag else 0)
         rewards_por_pista[pista].append(reward_acumulado)
@@ -182,15 +192,13 @@ def avaliar(env, agente):
     sucesso = False
 
     while not done:
-        # Escolha gulosa (agente_avaliacao possui eps=0)
         action = agente.escolher_acao(obs, treinar=False)
         obs_prox, reward, term, trunc, info = env.step(action)
         
         passos += 1
         recompensa_total += reward
         
-        # Pega a velocidade real a partir da última posição da observação
-        v_atual = obs_prox[-1] * 2.0  # Desnormaliza (v_norm * V_MAX)
+        v_atual = obs_prox[-1] * 2.0
         velocidades.append(v_atual)
         
         if info.get("chegada"):
@@ -274,7 +282,6 @@ def main():
     args = parser.parse_args()
 
     if args.avaliar:
-        # Modo de avaliação isolada de uma única pista específica
         arquivo_modelo = DIR_TREINAMENTO / "qlearning.pkl"
         if not arquivo_modelo.exists():
             print(f"Erro: O modelo {arquivo_modelo} não existe. Treine primeiro.")
@@ -288,12 +295,10 @@ def main():
         print(f"Sucesso: {'SIM' if res['sucesso'] else 'NÃO'} | Passos: {res['passos']} | Recompensa: {res['recompensa_total']:.2f}")
         return
 
-    # Orquestração do Treinamento
     def fn_treinar():
         agente = AgenteQLearning(obs_dim=6, n_actions=5, K=args.K)
         n_total = args.episodios_por_pista * len(PISTAS_TREINO)
         
-        # 80% do treino explorando com decaimento, últimos 20% consolidando em eps_final
         decaimento_limite = int(0.8 * n_total)
         
         rewards, sucessos, rewards_por_pista = treinar_round_robin(
@@ -320,7 +325,7 @@ def main():
         env = AmbienteCarro(pista, max_steps=args.max_passos, seed=SEED)
         resultado_res = avaliar(env, agente_avaliacao)
         
-        nome_pista = Path(pista).stem  # extrai "pista_17"
+        nome_pista = Path(pista).stem 
         escrever_saida(
             f"q_learning_{nome_pista}.txt", 
             pista, 
